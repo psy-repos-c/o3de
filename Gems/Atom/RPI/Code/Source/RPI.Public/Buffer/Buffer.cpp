@@ -18,7 +18,7 @@
 #include <AtomCore/Instance/InstanceDatabase.h>
 #include <AzCore/Component/TickBus.h>
 
-AZ_DECLARE_BUDGET(RPI);
+ATOM_RPI_PUBLIC_API AZ_DECLARE_BUDGET(RPI);
 
 namespace AZ
 {
@@ -170,7 +170,7 @@ namespace AZ
 
                         for (auto deviceIndex{0}; deviceIndex < deviceCount; ++deviceIndex)
                         {
-                            if (AZStd::to_underlying(deviceMask) & (1 << deviceIndex))
+                            if (m_streamFence->IsDeviceSet(deviceIndex))
                             {
                                 m_streamFence->GetDeviceFence(deviceIndex)->WaitOnCpuAsync([this]()
                                 {

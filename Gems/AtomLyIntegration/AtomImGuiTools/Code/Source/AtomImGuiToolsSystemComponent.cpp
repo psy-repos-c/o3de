@@ -39,12 +39,12 @@ namespace AtomImGuiTools
 
     void AtomImGuiToolsSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provided.push_back(AZ_CRC("AtomImGuiToolsService"));
+        provided.push_back(AZ_CRC_CE("AtomImGuiToolsService"));
     }
 
     void AtomImGuiToolsSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        incompatible.push_back(AZ_CRC("AtomImGuiToolsService"));
+        incompatible.push_back(AZ_CRC_CE("AtomImGuiToolsService"));
     }
 
     void AtomImGuiToolsSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -104,7 +104,6 @@ namespace AtomImGuiTools
                 m_showTransientAttachmentProfiler = m_imguiTransientAttachmentProfiler.Draw(transientStats);
             }
         }
-
         m_showMaterialDetails = m_imguiMaterialDetails.Tick(m_materialDetailsController.GetMeshDrawPackets(), m_materialDetailsController.GetSelectionName().c_str());
     }
 

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <Atom/RPI.Public/Buffer/BufferSystemInterface.h>
+#include <Atom/RPI.Public/Configuration.h>
 #include <Atom/RPI.Reflect/Asset/AssetHandler.h>
 
 namespace AZ
@@ -21,7 +22,7 @@ namespace AZ
         class Buffer;
 
         //! Manages system-wide initialization and support for Buffer classes
-        class BufferSystem final
+        class ATOM_RPI_PUBLIC_API BufferSystem final
             : public BufferSystemInterface
         {
         public:
@@ -33,7 +34,7 @@ namespace AZ
             Data::Instance<Buffer> CreateBufferFromCommonPool(const CommonBufferDescriptor& descriptor) override;
             Data::Instance<Buffer> FindCommonBuffer(AZStd::string_view uniqueBufferName) override;
 
-            void Init(RHI::MultiDevice::DeviceMask deviceMask);
+            void Init();
             void Shutdown();
 
         protected:

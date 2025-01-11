@@ -52,7 +52,7 @@ namespace AZ::RHI
     {
         if (Validation::IsEnabled())
         {
-            if (!ValidateIsRegistered(expandRequest.m_image))
+            if (!ValidateIsRegistered(expandRequest.m_image.get()))
             {
                 return false;
             }
@@ -62,12 +62,12 @@ namespace AZ::RHI
         return true;
     }
 
-    ResultCode StreamingImagePool::Init(MultiDevice::DeviceMask deviceMask, const StreamingImagePoolDescriptor& descriptor)
+    ResultCode StreamingImagePool::Init(const StreamingImagePoolDescriptor& descriptor)
     {
         AZ_PROFILE_FUNCTION(RHI);
 
         return ResourcePool::Init(
-            deviceMask,
+            descriptor.m_deviceMask,
             [this, &descriptor]()
             {
                 // Assign the descriptor prior to initialization. Technically, the descriptor is undefined
@@ -83,6 +83,7 @@ namespace AZ::RHI
                         auto* device = RHISystemInterface::Get()->GetDevice(deviceIndex);
 
                         m_deviceObjects[deviceIndex] = Factory::Get().CreateStreamingImagePool();
+
                         result = GetDeviceStreamingImagePool(deviceIndex)->Init(*device, descriptor);
 
                         return result == ResultCode::Success;
@@ -118,17 +119,74 @@ namespace AZ::RHI
             initRequest.m_descriptor,
             [this, &initRequest]()
             {
-                return IterateObjects<DeviceStreamingImagePool>([&initRequest](auto deviceIndex, auto deviceStreamingImagePool)
+                initRequest.m_image->Init(GetDeviceMask() & initRequest.m_deviceMask);
+
+                ResultCode result = IterateObjects<DeviceStreamingImagePool>(
+                    [&initRequest](auto deviceIndex, auto deviceStreamingImagePool)
+                    {
+                        if (CheckBit(initRequest.m_image->GetDeviceMask(), deviceIndex))
+                        {
+                            if (!initRequest.m_image->m_deviceObjects.contains(deviceIndex))
+                            {
+                                initRequest.m_image->m_deviceObjects[deviceIndex] = Factory::Get().CreateImage();
+                            }
+
+                            DeviceStreamingImageInitRequest streamingImageInitRequest(
+                                initRequest.m_image->GetDeviceImage(deviceIndex), initRequest.m_descriptor, initRequest.m_tailMipSlices);
+                            return deviceStreamingImagePool->InitImage(streamingImageInitRequest);
+                        }
+                        else
+                        {
+                            initRequest.m_image->m_deviceObjects.erase(deviceIndex);
+                        }
+
+                        return ResultCode::Success;
+                    });
+
+                if (result != ResultCode::Success)
                 {
-                    initRequest.m_image->m_deviceObjects[deviceIndex] = Factory::Get().CreateImage();
-                    DeviceStreamingImageInitRequest streamingImageInitRequest(
-                        *initRequest.m_image->GetDeviceImage(deviceIndex), initRequest.m_descriptor, initRequest.m_tailMipSlices);
-                    return deviceStreamingImagePool->InitImage(streamingImageInitRequest);
-                });
+                    // Reset already initialized device-specific StreamingImagePools
+                    m_deviceObjects.clear();
+                }
+
+                return result;
             });
 
         AZ_Warning("StreamingImagePool", resultCode == ResultCode::Success, "Failed to initialize image.");
         return resultCode;
+    }
+
+    ResultCode StreamingImagePool::UpdateImageDeviceMask(const StreamingImageDeviceMaskRequest& request)
+    {
+        return IterateObjects<DeviceStreamingImagePool>(
+            [&request](auto deviceIndex, auto deviceStreamingImagePool)
+            {
+                if (CheckBit(request.m_deviceMask, deviceIndex))
+                {
+                    if (!request.m_image->m_deviceObjects.contains(deviceIndex))
+                    {
+                        request.m_image->m_deviceObjects[deviceIndex] = Factory::Get().CreateImage();
+
+                        DeviceStreamingImageInitRequest imageInitRequest(
+                            request.m_image->GetDeviceImage(deviceIndex), request.m_image->m_descriptor, request.m_tailMipSlices);
+                        auto result = deviceStreamingImagePool->InitImage(imageInitRequest);
+
+                        if (result == ResultCode::Success)
+                        {
+                            request.m_image->Init(SetBit(request.m_image->GetDeviceMask(), deviceIndex));
+                        }
+
+                        return result;
+                    }
+                }
+                else
+                {
+                    request.m_image->Init(ResetBit(request.m_image->GetDeviceMask(), deviceIndex));
+                    request.m_image->m_deviceObjects.erase(deviceIndex);
+                }
+
+                return ResultCode::Success;
+            });
     }
 
     ResultCode StreamingImagePool::ExpandImage(const StreamingImageExpandRequest& request)
@@ -157,7 +215,7 @@ namespace AZ::RHI
         {
             DeviceStreamingImageExpandRequest expandRequest;
 
-            expandRequest.m_image = request.m_image->GetDeviceImage(deviceIndex).get();
+            expandRequest.m_image = request.m_image->GetDeviceImage(deviceIndex);
             expandRequest.m_mipSlices = request.m_mipSlices;
             expandRequest.m_waitForUpload = request.m_waitForUpload;
             expandRequest.m_completeCallback = completeCallback;
@@ -245,11 +303,6 @@ namespace AZ::RHI
 
     void StreamingImagePool::Shutdown()
     {
-        IterateObjects<DeviceStreamingImagePool>([]([[maybe_unused]] auto deviceIndex, auto deviceStreamingImagePool)
-        {
-            deviceStreamingImagePool->Shutdown();
-        });
-
         ResourcePool::Shutdown();
     }
 } // namespace AZ::RHI

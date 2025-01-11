@@ -38,15 +38,13 @@ namespace AZ::RHI
         m_bufferViews.resize(layout->GetGroupSizeForBuffers());
         m_samplers.resize(layout->GetGroupSizeForSamplers());
 
-        auto deviceCount{ RHI::RHISystemInterface::Get()->GetDeviceCount() };
-
-        for (int deviceIndex = 0; deviceIndex < deviceCount; ++deviceIndex)
-        {
-            if (CheckBitsAll((AZStd::to_underlying(m_deviceMask) >> deviceIndex), 1u))
+        MultiDeviceObject::IterateDevices(
+            m_deviceMask,
+            [this, layout](int deviceIndex)
             {
                 m_deviceShaderResourceGroupDatas[deviceIndex] = DeviceShaderResourceGroupData(layout);
-            }
-        }
+                return true;
+            });
     }
 
     void ShaderResourceGroupData::ResetViews()
@@ -102,7 +100,11 @@ namespace AZ::RHI
 
                 for (int imageIndex = 0; imageIndex < imageViews.size(); ++imageIndex)
                 {
-                    deviceImageViews[imageIndex] = imageViews[imageIndex] ? imageViews[imageIndex]->GetDeviceImageView(deviceIndex).get() : nullptr;
+                    deviceImageViews[imageIndex] = imageViews[imageIndex]
+                        ? (imageViews[imageIndex]->GetImage()->IsDeviceSet(deviceIndex)
+                               ? imageViews[imageIndex]->GetDeviceImageView(deviceIndex).get()
+                               : nullptr)
+                        : nullptr;
                 }
 
                 isValidAll &= deviceShaderResourceGroupData.SetImageViewArray(inputIndex, deviceImageViews, arrayIndex);
@@ -141,7 +143,11 @@ namespace AZ::RHI
 
                 for (int imageIndex = 0; imageIndex < imageViews.size(); ++imageIndex)
                 {
-                    deviceImageViews[imageIndex] = imageViews[imageIndex] ? imageViews[imageIndex]->GetDeviceImageView(deviceIndex).get() : nullptr;
+                    deviceImageViews[imageIndex] = imageViews[imageIndex]
+                        ? (imageViews[imageIndex]->GetImage()->IsDeviceSet(deviceIndex)
+                               ? imageViews[imageIndex]->GetDeviceImageView(deviceIndex).get()
+                               : nullptr)
+                        : nullptr;
                 }
 
                 isValidAll &= deviceShaderResourceGroupData.SetImageViewUnboundedArray(inputIndex, deviceImageViews);
@@ -185,7 +191,11 @@ namespace AZ::RHI
 
                 for (int bufferIndex = 0; bufferIndex < bufferViews.size(); ++bufferIndex)
                 {
-                    deviceBufferViews[bufferIndex] = bufferViews[bufferIndex] ? bufferViews[bufferIndex]->GetDeviceBufferView(deviceIndex).get() : nullptr;
+                    deviceBufferViews[bufferIndex] = bufferViews[bufferIndex]
+                        ? (bufferViews[bufferIndex]->GetBuffer()->IsDeviceSet(deviceIndex)
+                               ? bufferViews[bufferIndex]->GetDeviceBufferView(deviceIndex).get()
+                               : nullptr)
+                        : nullptr;
                 }
 
                 isValidAll &= deviceShaderResourceGroupData.SetBufferViewArray(inputIndex, deviceBufferViews, arrayIndex);
@@ -224,7 +234,11 @@ namespace AZ::RHI
 
                 for (int bufferIndex = 0; bufferIndex < bufferViews.size(); ++bufferIndex)
                 {
-                    deviceBufferViews[bufferIndex] = bufferViews[bufferIndex] ? bufferViews[bufferIndex]->GetDeviceBufferView(deviceIndex).get() : nullptr;
+                    deviceBufferViews[bufferIndex] = bufferViews[bufferIndex]
+                        ? (bufferViews[bufferIndex]->GetBuffer()->IsDeviceSet(deviceIndex)
+                               ? bufferViews[bufferIndex]->GetDeviceBufferView(deviceIndex).get()
+                               : nullptr)
+                        : nullptr;
                 }
 
                 isValidAll &= deviceShaderResourceGroupData.SetBufferViewUnboundedArray(inputIndex, deviceBufferViews);
@@ -443,7 +457,7 @@ namespace AZ::RHI
         ShaderInputBufferIndex indirectResourceBufferIndex,
         const BufferView* indirectResourceBufferView,
         AZStd::span<const ImageView* const> imageViews,
-        uint32_t* outIndices,
+        AZStd::unordered_map<int, uint32_t*> outIndices,
         AZStd::span<bool> isViewReadOnly,
         uint32_t arrayIndex)
     {
@@ -456,11 +470,13 @@ namespace AZ::RHI
                 deviceImageViews[imageIndex] = imageViews[imageIndex] ? imageViews[imageIndex]->GetDeviceImageView(deviceIndex).get() : nullptr;
             }
 
+            auto outIndicesIt = outIndices.find(deviceIndex);
+
             deviceShaderResourceGroupData.SetBindlessViews(
                 indirectResourceBufferIndex,
                 indirectResourceBufferView->GetDeviceBufferView(deviceIndex).get(),
                 deviceImageViews,
-                outIndices,
+                outIndicesIt != outIndices.end() ? outIndicesIt->second : nullptr,
                 isViewReadOnly,
                 arrayIndex);
         }
@@ -496,7 +512,7 @@ namespace AZ::RHI
         ShaderInputBufferIndex indirectResourceBufferIndex,
         const BufferView* indirectResourceBufferView,
         AZStd::span<const BufferView* const> bufferViews,
-        uint32_t* outIndices,
+        AZStd::unordered_map<int, uint32_t*> outIndices,
         AZStd::span<bool> isViewReadOnly,
         uint32_t arrayIndex)
     {
@@ -509,11 +525,13 @@ namespace AZ::RHI
                 deviceBufferViews[bufferIndex] = bufferViews[bufferIndex] ? bufferViews[bufferIndex]->GetDeviceBufferView(deviceIndex).get() : nullptr;
             }
 
+            auto outIndicesIt = outIndices.find(deviceIndex);
+
             deviceShaderResourceGroupData.SetBindlessViews(
                 indirectResourceBufferIndex,
                 indirectResourceBufferView->GetDeviceBufferView(deviceIndex).get(),
                 deviceBufferViews,
-                outIndices,
+                outIndicesIt != outIndices.end() ? outIndicesIt->second : nullptr,
                 isViewReadOnly,
                 arrayIndex);
         }

@@ -80,19 +80,23 @@ namespace AZ::RHI
             AZ_Assert(m_destinationImage, "Not initialized with destination Image\n");
 
             return DeviceCopyBufferToImageDescriptor{ m_sourceBuffer ? m_sourceBuffer->GetDeviceBuffer(deviceIndex).get() : nullptr,
-                                                m_sourceOffset,
-                                                m_sourceBytesPerRow,
-                                                m_sourceBytesPerImage,
-                                                m_sourceSize,
-                                                m_destinationImage ? m_destinationImage->GetDeviceImage(deviceIndex).get() : nullptr,
-                                                m_destinationSubresource,
-                                                m_destinationOrigin };
+                                                      m_sourceOffset,
+                                                      m_sourceBytesPerRow,
+                                                      m_sourceBytesPerImage,
+                                                      m_sourceFormat,
+                                                      m_sourceSize,
+                                                      m_destinationImage ? m_destinationImage->GetDeviceImage(deviceIndex).get() : nullptr,
+                                                      m_destinationSubresource,
+                                                      m_destinationOrigin };
         }
 
         const Buffer* m_sourceBuffer = nullptr;
         uint32_t m_sourceOffset = 0;
         uint32_t m_sourceBytesPerRow = 0;
         uint32_t m_sourceBytesPerImage = 0;
+        //! The source format is usually same as m_destinationImage's format. When destination image contains more than one aspect,
+        //! the format should be compatiable with the aspect of the destination image's subresource
+        Format m_sourceFormat = Format::Unknown;
         Size m_sourceSize;
         const Image* m_destinationImage = nullptr;
         ImageSubresource m_destinationSubresource;
@@ -131,7 +135,7 @@ namespace AZ::RHI
         uint32_t m_destinationBytesPerImage = 0;
         //! The destination format is usually same as m_sourceImage's format. When source image contains more than one aspect,
         //! the format should be compatiable with the aspect of the source image's subresource
-        Format m_destinationFormat;
+        Format m_destinationFormat = Format::Unknown;
     };
 
     //! A structure used to define a CopyItem, copying from a QueryPool to a Buffer
@@ -142,10 +146,10 @@ namespace AZ::RHI
         //! Returns the device-specific DeviceCopyQueryToBufferDescriptor for the given index
         DeviceCopyQueryToBufferDescriptor GetDeviceCopyQueryToBufferDescriptor(int deviceIndex) const
         {
-            AZ_Assert(m_SourceQueryPool, "Not initialized with source QueryPool\n");
+            AZ_Assert(m_sourceQueryPool, "Not initialized with source QueryPool\n");
             AZ_Assert(m_destinationBuffer, "Not initialized with destination Buffer\n");
 
-            return DeviceCopyQueryToBufferDescriptor{ m_SourceQueryPool ? m_SourceQueryPool->GetDeviceQueryPool(deviceIndex).get() : nullptr,
+            return DeviceCopyQueryToBufferDescriptor{ m_sourceQueryPool ? m_sourceQueryPool->GetDeviceQueryPool(deviceIndex).get() : nullptr,
                                                 m_firstQuery,
                                                 m_queryCount,
                                                 m_destinationBuffer ? m_destinationBuffer->GetDeviceBuffer(deviceIndex).get() : nullptr,
@@ -153,7 +157,7 @@ namespace AZ::RHI
                                                 m_destinationStride };
         }
 
-        const QueryPool* m_SourceQueryPool = nullptr;
+        const QueryPool* m_sourceQueryPool = nullptr;
         QueryHandle m_firstQuery = QueryHandle(0);
         uint32_t m_queryCount = 0;
         const Buffer* m_destinationBuffer = nullptr;
@@ -165,14 +169,14 @@ namespace AZ::RHI
     {
         CopyItem()
             : m_type{ CopyItemType::Buffer }
-            , m_Buffer{}
+            , m_buffer{}
         {
         }
 
         CopyItem(
             const CopyBufferDescriptor& descriptor, RHI::MultiDevice::DeviceMask mask = RHI::MultiDevice::AllDevices)
             : m_type{ CopyItemType::Buffer }
-            , m_Buffer{ descriptor }
+            , m_buffer{ descriptor }
             , m_deviceMask{ mask }
         {
         }
@@ -180,7 +184,7 @@ namespace AZ::RHI
         CopyItem(
             const CopyImageDescriptor& descriptor, RHI::MultiDevice::DeviceMask mask = RHI::MultiDevice::AllDevices)
             : m_type{ CopyItemType::Image }
-            , m_Image{ descriptor }
+            , m_image{ descriptor }
             , m_deviceMask{ mask }
         {
         }
@@ -188,7 +192,7 @@ namespace AZ::RHI
         CopyItem(
             const CopyBufferToImageDescriptor& descriptor, RHI::MultiDevice::DeviceMask mask = RHI::MultiDevice::AllDevices)
             : m_type{ CopyItemType::BufferToImage }
-            , m_BufferToImage{ descriptor }
+            , m_bufferToImage{ descriptor }
             , m_deviceMask{ mask }
         {
         }
@@ -196,7 +200,7 @@ namespace AZ::RHI
         CopyItem(
             const CopyImageToBufferDescriptor& descriptor, RHI::MultiDevice::DeviceMask mask = RHI::MultiDevice::AllDevices)
             : m_type{ CopyItemType::ImageToBuffer }
-            , m_ImageToBuffer{ descriptor }
+            , m_imageToBuffer{ descriptor }
             , m_deviceMask{ mask }
         {
         }
@@ -204,7 +208,7 @@ namespace AZ::RHI
         CopyItem(
             const CopyQueryToBufferDescriptor& descriptor, RHI::MultiDevice::DeviceMask mask = RHI::MultiDevice::AllDevices)
             : m_type{ CopyItemType::QueryToBuffer }
-            , m_QueryToBuffer{ descriptor }
+            , m_queryToBuffer{ descriptor }
             , m_deviceMask{ mask }
         {
         }
@@ -215,15 +219,15 @@ namespace AZ::RHI
             switch (m_type)
             {
             case CopyItemType::Buffer:
-                return DeviceCopyItem(m_Buffer.GetDeviceCopyBufferDescriptor(deviceIndex));
+                return DeviceCopyItem(m_buffer.GetDeviceCopyBufferDescriptor(deviceIndex));
             case CopyItemType::Image:
-                return DeviceCopyItem(m_Image.GetDeviceCopyImageDescriptor(deviceIndex));
+                return DeviceCopyItem(m_image.GetDeviceCopyImageDescriptor(deviceIndex));
             case CopyItemType::BufferToImage:
-                return DeviceCopyItem(m_BufferToImage.GetDeviceCopyBufferToImageDescriptor(deviceIndex));
+                return DeviceCopyItem(m_bufferToImage.GetDeviceCopyBufferToImageDescriptor(deviceIndex));
             case CopyItemType::ImageToBuffer:
-                return DeviceCopyItem(m_ImageToBuffer.GetDeviceCopyImageToBufferDescriptor(deviceIndex));
+                return DeviceCopyItem(m_imageToBuffer.GetDeviceCopyImageToBufferDescriptor(deviceIndex));
             case CopyItemType::QueryToBuffer:
-                return DeviceCopyItem(m_QueryToBuffer.GetDeviceCopyQueryToBufferDescriptor(deviceIndex));
+                return DeviceCopyItem(m_queryToBuffer.GetDeviceCopyQueryToBufferDescriptor(deviceIndex));
             default:
                 return DeviceCopyItem();
             }
@@ -232,11 +236,11 @@ namespace AZ::RHI
         CopyItemType m_type;
         union
         {
-            CopyBufferDescriptor m_Buffer;
-            CopyImageDescriptor m_Image;
-            CopyBufferToImageDescriptor m_BufferToImage;
-            CopyImageToBufferDescriptor m_ImageToBuffer;
-            CopyQueryToBufferDescriptor m_QueryToBuffer;
+            CopyBufferDescriptor m_buffer;
+            CopyImageDescriptor m_image;
+            CopyBufferToImageDescriptor m_bufferToImage;
+            CopyImageToBufferDescriptor m_imageToBuffer;
+            CopyQueryToBufferDescriptor m_queryToBuffer;
         };
         //! A DeviceMask to denote on which devices an operation should take place
         RHI::MultiDevice::DeviceMask m_deviceMask;

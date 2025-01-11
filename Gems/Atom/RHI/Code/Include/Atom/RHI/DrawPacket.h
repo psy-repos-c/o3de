@@ -10,7 +10,7 @@
 
 #include <Atom/RHI/DrawList.h>
 #include <Atom/RHI/DeviceDrawPacket.h>
-#include <Atom/RHI/DrawItem.h>
+#include <Atom/RHI/GeometryView.h>
 #include <AzCore/std/smart_ptr/intrusive_base.h>
 
 // Predefinition for unit test friend class
@@ -49,9 +49,11 @@ namespace AZ::RHI
 
         //! Returns the DeviceDrawItem at the given index
         DrawItem* GetDrawItem(size_t index);
+        const DrawItem* GetDrawItem(size_t index) const;
 
         //! Returns the DeviceDrawItem associated with the given DrawListTag
         DrawItem* GetDrawItem(DrawListTag drawListTag);
+        const DrawItem* GetDrawItem(DrawListTag drawListTag) const;
 
         //! Returns the draw item and its properties associated with the provided index.
         DrawItemProperties GetDrawItemProperties(size_t index) const;
@@ -64,7 +66,7 @@ namespace AZ::RHI
         DrawFilterMask GetDrawFilterMask(size_t index) const;
 
         //! Update the root constant at the specified interval. The same root constants are shared by all draw items in the draw packet
-        void SetRootConstant(uint32_t offset, const AZStd::span<uint8_t>& data);
+        void SetRootConstant(uint32_t offset, const AZStd::span<u8>& data);
 
         //! Set the instance count in all draw items.
         void SetInstanceCount(uint32_t instanceCount);
