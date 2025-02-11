@@ -37,22 +37,19 @@ namespace AZ::RHI
     using CompleteCallback = AZStd::function<void()>;
 
     //! A structure used as an argument to DeviceStreamingImagePool::InitImage.
-    template <typename ImageClass>
-    struct StreamingImageInitRequestTemplate
+    struct DeviceStreamingImageInitRequest
     {
-        StreamingImageInitRequestTemplate() = default;
+        DeviceStreamingImageInitRequest() = default;
 
-        StreamingImageInitRequestTemplate(
-            ImageClass& image,
-            const ImageDescriptor& descriptor,
-            AZStd::span<const StreamingImageMipSlice> tailMipSlices)
-            : m_image{&image}
-            , m_descriptor{descriptor}
-            , m_tailMipSlices{tailMipSlices}
+        DeviceStreamingImageInitRequest(
+            Ptr<DeviceImage> image, const ImageDescriptor& descriptor, AZStd::span<const StreamingImageMipSlice> tailMipSlices)
+            : m_image{ AZStd::move(image) }
+            , m_descriptor{ descriptor }
+            , m_tailMipSlices{ tailMipSlices }
         {}
 
         /// The image to initialize.
-        ImageClass* m_image = nullptr;
+        Ptr<DeviceImage> m_image = nullptr;
 
         /// The descriptor used to to initialize the image.
         ImageDescriptor m_descriptor;
@@ -70,7 +67,7 @@ namespace AZ::RHI
         StreamingImageExpandRequestTemplate() = default;
 
         /// The image with which to expand its mip chain.
-        ImageClass* m_image = nullptr;
+        Ptr<ImageClass> m_image = nullptr;
 
         //! A list of image mip slices used to expand the contents. The data *must*
         //! remain valid for the duration of the upload (until m_completeCallback
@@ -84,7 +81,6 @@ namespace AZ::RHI
         CompleteCallback m_completeCallback;
     };
 
-    using DeviceStreamingImageInitRequest = StreamingImageInitRequestTemplate<DeviceImage>;
     using DeviceStreamingImageExpandRequest = StreamingImageExpandRequestTemplate<DeviceImage>;
 
     class DeviceStreamingImagePool

@@ -22,8 +22,7 @@ CSelectKeyUIControls::~CSelectKeyUIControls()
     Camera::CameraNotificationBus::Handler::BusDisconnect();
 }
 
-//////////////////////////////////////////////////////////////////////////
-bool CSelectKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys)
+bool CSelectKeyUIControls::OnKeySelectionChange(const CTrackViewKeyBundle& selectedKeys)
 {
     if (!selectedKeys.AreAllKeysOfSameType())
     {
@@ -115,10 +114,14 @@ void CSelectKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
 
             if (!selectKey.szSelection.empty())
             {
-                IAnimSequence* pSequence = GetIEditor()->GetSystem()->GetIMovieSystem()->FindLegacySequenceByName(selectKey.szSelection.c_str());
-                if (pSequence)
+                IMovieSystem* movieSystem = AZ::Interface<IMovieSystem>::Get();
+                if (movieSystem)
                 {
-                    selectKey.fDuration = pSequence->GetTimeRange().Length();
+                    IAnimSequence* pSequence = movieSystem->FindLegacySequenceByName(selectKey.szSelection.c_str());
+                    if (pSequence)
+                    {
+                        selectKey.fDuration = pSequence->GetTimeRange().Length();
+                    }
                 }
             }
 

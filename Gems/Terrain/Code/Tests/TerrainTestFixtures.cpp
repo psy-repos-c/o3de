@@ -39,6 +39,8 @@
 #include <MockAxisAlignedBoxShapeComponent.h>
 #include <Terrain/MockTerrainLayerSpawner.h>
 
+extern "C" void CleanUpRpiPublicGenericClassInfo();
+
 namespace UnitTest
 {
     void TerrainTestEnvironment::AddGemsAndComponents()
@@ -421,7 +423,7 @@ namespace UnitTest
 
         AZ::RPI::ImageSystemDescriptor imageSystemDescriptor;
         m_imageSystem = AZStd::make_unique<AZ::RPI::ImageSystem>();
-        m_imageSystem->Init(AZ::RHI::MultiDevice::AllDevices, imageSystemDescriptor);
+        m_imageSystem->Init(imageSystemDescriptor);
 
         // Now that the RPISystem is activated, activate the system entity.
         m_systemEntity->Init();
@@ -436,6 +438,8 @@ namespace UnitTest
         m_rhiFactory = nullptr;
 
         m_systemEntity.reset();
+
+        CleanUpRpiPublicGenericClassInfo();
 
         UnitTest::TerrainTestFixture::TearDown();
     }

@@ -26,6 +26,7 @@
 
 #include <AzFramework/Visibility/IVisibilitySystem.h>
 
+#include <Atom/RPI.Public/Configuration.h>
 #include <Atom/RPI.Public/View.h>
 #include <Atom/RHI/DrawList.h>
 
@@ -50,7 +51,7 @@ namespace AZ
     {
         class Scene;
 
-        struct Cullable
+        struct ATOM_RPI_PUBLIC_API Cullable
         {
             struct CullData
             {
@@ -67,6 +68,9 @@ namespace AZ
                 //! Will hide this object if any of the hideFlags match the View's usage flags. Useful to hide objects from certain Views.
                 //! Set to all 0's if you don't want to hide the object from any Views.
                 RPI::View::UsageFlags m_hideFlags = RPI::View::UsageNone;
+
+                //! ID of the entity owning this cullable (optional)
+                AZ::EntityId m_entityId{ AZ::EntityId::InvalidEntityId };
 
                 //! UUID and type of the component that owns this cullable (optional)
                 AZ::Uuid m_componentUuid = AZ::Uuid::CreateNull();
@@ -145,7 +149,7 @@ namespace AZ
 #endif
         };
 
-        class CullingDebugContext
+        class ATOM_RPI_PUBLIC_API CullingDebugContext
         {
         public:
             AZStd::mutex m_frozenFrustumsMutex;
@@ -223,12 +227,12 @@ namespace AZ
         };
 
         //! Selects an lod (based on size-in-screen-space) and adds the appropriate DrawPackets to the view.
-        uint32_t AddLodDataToView(const Vector3& pos, const Cullable::LodData& lodData, RPI::View& view, AzFramework::VisibilityEntry::TypeFlags typeFlags);
+        ATOM_RPI_PUBLIC_API uint32_t AddLodDataToView(const Vector3& pos, const Cullable::LodData& lodData, RPI::View& view, AzFramework::VisibilityEntry::TypeFlags typeFlags);
 
         //! Centralized manager for culling-related processing for a given scene.
         //! There is one CullingScene owned by each Scene, so external systems (such as FeatureProcessors) should
         //! access the CullingScene via their parent Scene.
-        class CullingScene
+        class ATOM_RPI_PUBLIC_API CullingScene
         {
         public:
             AZ_RTTI(CullingScene, "{5B23B55B-8A1D-4B0D-9760-15E87FC8518A}");

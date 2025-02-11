@@ -26,6 +26,7 @@
 #include <Atom/RPI.Public/RenderPipeline.h>
 #include <Atom/RPI.Public/View.h>
 #include <Atom/RPI.Public/Pass/PassFactory.h>
+#include <Atom/RPI.Public/PerformanceCollectionNotificationBus.h>
 
 #include <Atom/RHI/Factory.h>
 #include <Atom/RHI/Device.h>
@@ -76,6 +77,8 @@ namespace AZ
             GpuQuerySystemDescriptor::Reflect(context);
 
             PipelineStatisticsResult::Reflect(context);
+
+            PerformaceCollectionNotification::Reflect(context);
         }
 
         void RPISystem::Initialize(const RPISystemDescriptor& rpiSystemDescriptor)
@@ -443,8 +446,8 @@ namespace AZ
             }
 
             m_rhiSystem.Init(bindlessSrgLayout);
-            m_imageSystem.Init(RHI::MultiDevice::AllDevices, m_descriptor.m_imageSystemDescriptor);
-            m_bufferSystem.Init(RHI::MultiDevice::AllDevices);
+            m_imageSystem.Init(m_descriptor.m_imageSystemDescriptor);
+            m_bufferSystem.Init();
             m_dynamicDraw.Init(m_descriptor.m_dynamicDrawSystemDescriptor);
 
             m_passSystem.InitPassTemplates();
@@ -477,8 +480,8 @@ namespace AZ
 
             //Init rhi/image/buffer systems to match InitializeSystemAssets
             m_rhiSystem.Init();
-            m_imageSystem.Init(RHI::MultiDevice::AllDevices, m_descriptor.m_imageSystemDescriptor);
-            m_bufferSystem.Init(RHI::MultiDevice::AllDevices);
+            m_imageSystem.Init(m_descriptor.m_imageSystemDescriptor);
+            m_bufferSystem.Init();
 
             // Assets aren't actually available or needed for tests, but the m_systemAssetsInitialized flag still needs to be flipped.
             m_systemAssetsInitialized = true;

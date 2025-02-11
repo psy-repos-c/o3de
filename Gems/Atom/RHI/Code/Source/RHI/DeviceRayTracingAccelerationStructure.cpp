@@ -53,7 +53,7 @@ namespace AZ::RHI
 
     DeviceRayTracingBlasDescriptor* DeviceRayTracingBlasDescriptor::BuildFlags(const RHI::RayTracingAccelerationStructureBuildFlags &buildFlags)
     {
-        AZ_Assert(m_buildContext, "BuildFlags property can only be added to a Geometry entry");
+        AZ_Assert(m_buildContext || m_aabb, "BuildFlags property can only be added to a Geometry or AABB entry");
         m_buildFlags = buildFlags;
         return this;
     }
@@ -140,6 +140,21 @@ namespace AZ::RHI
         RHI::Ptr<RHI::DeviceRayTracingBlas> rayTracingBlas = RHI::Factory::Get().CreateRayTracingBlas();
         AZ_Error("DeviceRayTracingBlas", rayTracingBlas.get(), "Failed to create RHI::DeviceRayTracingBlas");
         return rayTracingBlas;
+    }
+
+    ResultCode DeviceRayTracingBlas::CreateCompactedBuffers(
+        Device& device,
+        RHI::Ptr<RHI::DeviceRayTracingBlas> sourceBlas,
+        uint64_t compactedBufferSize,
+        const DeviceRayTracingBufferPools& rayTracingBufferPools)
+    {
+        ResultCode resultCode = CreateCompactedBuffersInternal(device, sourceBlas, compactedBufferSize, rayTracingBufferPools);
+        if (resultCode == ResultCode::Success)
+        {
+            DeviceObject::Init(device);
+            m_geometries = sourceBlas->m_geometries;
+        }
+        return resultCode;
     }
 
     ResultCode DeviceRayTracingBlas::CreateBuffers(Device& device, const DeviceRayTracingBlasDescriptor* descriptor, const DeviceRayTracingBufferPools& rayTracingBufferPools)

@@ -7,9 +7,9 @@
  */
 #pragma once
 
+#include <Atom/RPI.Reflect/Configuration.h>
 #include <Atom/RHI.Reflect/Limits.h>
 #include <Atom/RHI.Reflect/ShaderDataMappings.h>
-
 #include <Atom/RPI.Reflect/Pass/PassData.h>
 
 namespace AZ
@@ -17,7 +17,7 @@ namespace AZ
     namespace RPI
     {
         //! Custom data for the RenderPass. Should be specified in the PassRequest.
-        struct RenderPassData
+        struct ATOM_RPI_REFLECT_API RenderPassData
             : public PassData
         {
             AZ_RTTI(RenderPassData, "{37DE2402-5BAA-48E5-AAC5-3625DFC06BD6}", PassData);
@@ -32,8 +32,6 @@ namespace AZ
             RHI::ShaderDataMappings m_mappings;
 
             bool m_bindViewSrg = false;
-
-            int m_deviceIndex = RHI::MultiDevice::InvalidDeviceIndex;
         };
     } // namespace RPI
 } // namespace AZ

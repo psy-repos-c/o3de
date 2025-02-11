@@ -15,6 +15,9 @@
 // Qt
 #include <QMessageBox>
 
+// AzCore
+#include <AzCore/std/sort.h>
+
 // CryCommon
 #include <CryCommon/Maestro/Types/AnimValueType.h>
 
@@ -26,7 +29,6 @@ AZ_PUSH_DISABLE_DLL_EXPORT_MEMBER_WARNING
 AZ_POP_DISABLE_DLL_EXPORT_MEMBER_WARNING
 
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyUIControls::OnInternalVariableChange(IVariable* var)
 {
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
@@ -38,7 +40,6 @@ void CTrackViewKeyUIControls::OnInternalVariableChange(IVariable* var)
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
 CTrackViewKeyPropertiesDlg::CTrackViewKeyPropertiesDlg(QWidget* hParentWnd)
     : QWidget(hParentWnd)
     , m_pLastTrackSelected(nullptr)
@@ -75,7 +76,7 @@ CTrackViewKeyPropertiesDlg::CTrackViewKeyPropertiesDlg(QWidget* hParentWnd)
     m_keyControls.push_back(new CTrackEventKeyUIControls());
 
     // Sort key controls by descending priority
-    std::stable_sort(m_keyControls.begin(), m_keyControls.end(),
+    AZStd::stable_sort(m_keyControls.begin(), m_keyControls.end(),
         [](const _smart_ptr<CTrackViewKeyUIControls>& a, const _smart_ptr<CTrackViewKeyUIControls>& b)
         {
             return a->GetPriority() > b->GetPriority();
@@ -85,7 +86,6 @@ CTrackViewKeyPropertiesDlg::CTrackViewKeyPropertiesDlg(QWidget* hParentWnd)
     CreateAllVars();
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::OnVarChange(IVariable* pVar)
 {
     // If it was a motion that just changed, we need to rebuild the controls
@@ -96,17 +96,15 @@ void CTrackViewKeyPropertiesDlg::OnVarChange(IVariable* pVar)
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::CreateAllVars()
 {
-    for (int i = 0; i < (int)m_keyControls.size(); i++)
+    for (const auto& keyControl : m_keyControls)
     {
-        m_keyControls[i]->SetKeyPropertiesDlg(this);
-        m_keyControls[i]->OnCreateVars();
+        keyControl->SetKeyPropertiesDlg(this);
+        keyControl->OnCreateVars();
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::PopulateVariables()
 {
     // Must first clear any selection in properties window.
@@ -120,7 +118,6 @@ void CTrackViewKeyPropertiesDlg::PopulateVariables()
     ReloadValues();
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::PopulateVariables(ReflectedPropertyControl* propCtrl)
 {
     propCtrl->RemoveAllItems();
@@ -129,31 +126,29 @@ void CTrackViewKeyPropertiesDlg::PopulateVariables(ReflectedPropertyControl* pro
     propCtrl->ReloadValues();
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::OnKeysChanged(CTrackViewSequence* pSequence)
 {
-    CTrackViewKeyBundle selectedKeys = pSequence->GetSelectedKeys();
+    const CTrackViewKeyBundle& selectedKeys = pSequence->GetSelectedKeys();
 
     if (selectedKeys.GetKeyCount() > 0 && selectedKeys.AreAllKeysOfSameType())
     {
-        CTrackViewTrack* pTrack = selectedKeys.GetKey(0).GetTrack();
+        const CTrackViewTrack* pTrack = selectedKeys.GetKey(0).GetTrack();
 
-        CAnimParamType paramType = pTrack->GetParameterType();
-        EAnimCurveType trackType = pTrack->GetCurveType();
-        AnimValueType valueType = pTrack->GetValueType();
+        const CAnimParamType paramType = pTrack->GetParameterType();
+        const EAnimCurveType trackType = pTrack->GetCurveType();
+        const AnimValueType valueType = pTrack->GetValueType();
 
-        for (int i = 0; i < (int)m_keyControls.size(); i++)
+        for (const auto& keyControl : m_keyControls)
         {
-            if (m_keyControls[i]->SupportTrackType(paramType, trackType, valueType))
+            if (keyControl->SupportTrackType(paramType, trackType, valueType))
             {
-                m_keyControls[i]->OnKeySelectionChange(selectedKeys);
+                keyControl->OnKeySelectionChange(selectedKeys);
                 break;
             }
         }
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* sequence)
 {
     m_sequence = sequence;
@@ -167,11 +162,11 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
         return;
     }
 
-    CTrackViewKeyBundle selectedKeys = sequence->GetSelectedKeys();
+    const CTrackViewKeyBundle& selectedKeys = sequence->GetSelectedKeys();
 
     m_wndTrackProps->OnKeySelectionChange(selectedKeys);
 
-    bool bSelectChangedInSameTrack
+    const bool bSelectChangedInSameTrack
         = m_pLastTrackSelected
             && selectedKeys.GetKeyCount() == 1
             && selectedKeys.GetKey(0).GetTrack() == m_pLastTrackSelected;
@@ -179,7 +174,7 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
     // Every Key in an Asset Blend track can have different min/max values on the float sliders
     // because it's based on the duration of the motion that is set. So don't try to
     // reuse the controls when the selection changes, otherwise the tooltips may be wrong.
-    bool reuseControls = bSelectChangedInSameTrack && m_pLastTrackSelected && (m_pLastTrackSelected->GetValueType() != AnimValueType::AssetBlend);
+    const bool reuseControls = bSelectChangedInSameTrack && m_pLastTrackSelected && (m_pLastTrackSelected->GetValueType() != AnimValueType::AssetBlend);
 
     if (selectedKeys.GetKeyCount() == 1)
     {
@@ -203,21 +198,21 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
     m_wndTrackProps->setEnabled(false);
     if (selectedKeys.GetKeyCount() > 0 && selectedKeys.AreAllKeysOfSameType())
     {
-        CTrackViewTrack* pTrack = selectedKeys.GetKey(0).GetTrack();
-
-        CAnimParamType paramType = pTrack->GetParameterType();
-        EAnimCurveType trackType = pTrack->GetCurveType();
-        AnimValueType valueType = pTrack->GetValueType();
-
-        for (int i = 0; i < (int)m_keyControls.size(); i++)
+        if (!reuseControls)
         {
-            if (m_keyControls[i]->SupportTrackType(paramType, trackType, valueType))
+            const CTrackViewTrack* pTrack = selectedKeys.GetKey(0).GetTrack();
+
+            const CAnimParamType paramType = pTrack->GetParameterType();
+            const EAnimCurveType trackType = pTrack->GetCurveType();
+            const AnimValueType valueType = pTrack->GetValueType();
+
+            for (const auto& keyControl : m_keyControls)
             {
-                if (!reuseControls)
+                if (keyControl->SupportTrackType(paramType, trackType, valueType))
                 {
-                    AddVars(m_keyControls[i]);
+                    AddVars(keyControl);
+                    break;
                 }
-                break;
             }
         }
 
@@ -238,9 +233,9 @@ void CTrackViewKeyPropertiesDlg::OnKeySelectionChanged(CTrackViewSequence* seque
     {
         PopulateVariables();
     }
+    OnKeysChanged(sequence);
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::AddVars(CTrackViewKeyUIControls* pUI)
 {
     CVarBlock* pVB = pUI->GetVarBlock();
@@ -251,7 +246,6 @@ void CTrackViewKeyPropertiesDlg::AddVars(CTrackViewKeyUIControls* pUI)
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyPropertiesDlg::ReloadValues()
 {
     m_wndProps->ReloadValues();
@@ -263,9 +257,6 @@ void CTrackViewKeyPropertiesDlg::OnSequenceChanged(CTrackViewSequence* sequence)
     m_wndTrackProps->OnSequenceChanged();
 }
 
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
 CTrackViewTrackPropsDlg::CTrackViewTrackPropsDlg(QWidget* parent /* = 0 */)
     : QWidget(parent)
     , ui(new Ui::CTrackViewTrackPropsDlg)
@@ -287,7 +278,6 @@ CTrackViewTrackPropsDlg::~CTrackViewTrackPropsDlg()
 {
 }
 
-//////////////////////////////////////////////////////////////////////////
 void CTrackViewTrackPropsDlg::OnSequenceChanged()
 {
     CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
@@ -299,9 +289,7 @@ void CTrackViewTrackPropsDlg::OnSequenceChanged()
     }
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-bool CTrackViewTrackPropsDlg::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys)
+bool CTrackViewTrackPropsDlg::OnKeySelectionChange(const CTrackViewKeyBundle& selectedKeys)
 {
     m_keyHandle = CTrackViewKeyHandle();
 
